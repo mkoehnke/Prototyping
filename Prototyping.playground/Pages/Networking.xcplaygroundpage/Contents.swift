@@ -28,8 +28,9 @@ struct User: JSONDecodable {
     }
 }
 
+// TODO - Relationship Mapping
 
-//: API Request
+//: Network Request
 
 let request = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/mkoehnke")!)
 performRequest(request) { (result : Result<User>) in
@@ -39,5 +40,15 @@ performRequest(request) { (result : Result<User>) in
     }
 }
 
+
+//: Image Request
+
+let url = NSURL(string: "https://avatars3.githubusercontent.com/u/583231?v=3&s=400")!
+performImageRequest(url) { (result : Result<UIImage>) in
+    switch result {
+    case let .Value(image): XCPlaygroundPage.currentPage.captureValue(image, withIdentifier: "image")
+    case let .Error(error): error
+    }
+}
 
 //: [Formatting](@next)

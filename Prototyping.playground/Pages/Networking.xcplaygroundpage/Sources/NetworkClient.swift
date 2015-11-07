@@ -1,34 +1,70 @@
 //
 // NetworkClient.swift
-// Concepts from https://robots.thoughtbot.com/efficient-json-in-swift-with-functional-concepts-and-generics
+// Concepts taken from https://robots.thoughtbot.com/efficient-json-in-swift-with-functional-concepts-and-generics
 //
 
-import Foundation
+import UIKit
 
 //========================================
 // MARK: Perform Requests
 //========================================
 
-public func performRequest<A: JSONDecodable>(request: NSURLRequest, callback: (Result<A>) -> ()) {
+public func performRequest<A: JSONDecodable>(request: NSURLRequest, callback: (Result<A>) -> ()) -> NSURLSessionTask? {
     let task = NSURLSession.sharedSession().dataTaskWithRequest(request) { data, urlResponse, error in
         callback(parseResult(data, urlResponse: urlResponse, error: error))
     }
     task.resume()
+    return task
 }
 
 public func parseResult<A: JSONDecodable>(data: NSData!, urlResponse: NSURLResponse!, error: NSError!) -> Result<A> {
     let responseResult: Result<Response> = Result(error, Response(data: data, urlResponse: urlResponse))
-    return responseResult >>> parseResponse
-                          >>> decodeJSON
-                          >>> decodeObject
+    return responseResult >>> parseResponse >>> decodeJSON >>> decodeObject
 }
 
-func parseResponse(response: Response) -> Result<NSData> {
+private func parseResponse(response: Response) -> Result<NSData> {
     let successRange = 200..<300
     if !successRange.contains(response.statusCode) {
-        return .Error(NSError(domain: "<Your domain>", code: 1, userInfo: nil)) // customize the error message to your liking
+        return .Error(NSError(domain: "<Your domain>", code: 1, userInfo: nil)) // customize error message 
     }
     return Result(nil, response.data)
+}
+
+//========================================
+// MARK: Perform Image Requests
+//========================================
+
+private let __imageCache = NSCache()
+public func performImageRequest(url: NSURL, callback: (Result<UIImage>) -> ()) -> NSURLSessionTask? {
+    let cachedImage = fetchCachedImage(url)
+    switch cachedImage {
+    case .Value: callback(cachedImage)
+    case .Error: return fetchRemoteImage(url, callback: callback)
+    }
+    return nil
+}
+
+private func fetchRemoteImage(url: NSURL, callback: (Result<UIImage>) -> ()) -> NSURLSessionTask? {
+    let task = NSURLSession.sharedSession().dataTaskWithURL(url, completionHandler: { (data, urlResponse, error) in
+        let responseResult: Result<Response> = Result(error, Response(data: data!, urlResponse: urlResponse!))
+        callback(responseResult >>> parseResponse >>> imageFromData(url))
+    })
+    task.resume()
+    return task
+}
+
+private func fetchCachedImage(url: NSURL) -> Result<UIImage> {
+    var image : UIImage?
+    if let data = __imageCache.objectForKey(url.absoluteString) as? NSPurgeableData where data.beginContentAccess() == true {
+        image = UIImage(data: data)
+        data.endContentAccess()
+    }
+    return resultFromOptional(image, error: NSError(domain: "<Your domain>", code: 1, userInfo: nil))
+}
+
+private func imageFromData(url: NSURL)(data: NSData) -> Result<UIImage> {
+    __imageCache.setObject(NSPurgeableData(data: data), forKey: url.absoluteString)
+    return resultFromOptional(UIImage(data: data), error: NSError(domain: "<Your domain>", code: 1, userInfo: nil))
 }
 
 
@@ -70,7 +106,7 @@ public func decodeObject<U: JSONDecodable>(json: JSON) -> Result<U> {
 // MARK: Response
 //========================================
 
-struct Response {
+private struct Response {
     let data: NSData
     var statusCode: Int = 500
     
@@ -95,7 +131,7 @@ public enum Result<A> {
     }
 }
 
-func resultFromOptional<A>(optional: A?, error: NSError!) -> Result<A> {
+private func resultFromOptional<A>(optional: A?, error: NSError!) -> Result<A> {
     if let a = optional {
         return .Value(a)
     } else {
