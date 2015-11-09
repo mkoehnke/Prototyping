@@ -40,6 +40,17 @@ let jsonTask = performJSONRequest(jsonRequest) { (result : Result<User>) in
     }
 }
 
+//: Network Batch Request
+
+let jsonRequest2 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/facebook")!)
+performJSONRequests([jsonRequest, jsonRequest2]) { (results : [String : Result<User>]) in
+    for result in results.values {
+        switch result {
+        case let .Value(user): user.name
+        case let .Error(error): error
+        }
+    }
+}
 
 //: Image Request
 

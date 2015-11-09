@@ -169,6 +169,21 @@ private func parseResponse(response: Response) -> Result<NSData> {
     return Result(nil, response.data)
 }
 
+public func performJSONRequests<A: JSONDecodable>(requests: [NSURLRequest], callback: ([String : Result<A>]) -> ()) {
+    let group = dispatch_group_create()
+    var results = [String : Result<A>]()
+    for request in requests {
+        dispatch_group_enter(group)
+        performJSONRequest(request, callback: { (result : Result<A>) in
+            results[request.URL!.absoluteString] = result
+            dispatch_group_leave(group)
+        })
+    }
+    dispatch_group_notify(group, dispatch_get_main_queue()) {
+        callback(results)
+    }
+}
+
 //========================================
 // MARK: Perform Image Requests
 //========================================
