@@ -170,6 +170,28 @@ private func parseResponse(response: Response) -> Result<NSData> {
 }
 
 //========================================
+// MARK: Perform Batch Requests
+//========================================
+
+public func performBatchRequest(
+    requests: [NSURLRequest], callback: ([NSURLRequest : Result<NSData>]) -> ()) {
+    let group = dispatch_group_create()
+    var results = [NSURLRequest : Result<NSData>]()
+    for request in requests {
+        dispatch_group_enter(group)
+        let task = NSURLSession.sharedSession().dataTaskWithRequest(request) { data, urlResponse, error in
+            let responseResult: Result<Response> = Result(error, Response(data: data!, urlResponse: urlResponse!))
+            results[request] = responseResult >>> parseResponse
+            dispatch_group_leave(group)
+        }
+        task.resume()
+    }
+    dispatch_group_notify(group, dispatch_get_main_queue()) {
+        callback(results)
+    }
+}
+
+//========================================
 // MARK: Perform Image Requests
 //========================================
 

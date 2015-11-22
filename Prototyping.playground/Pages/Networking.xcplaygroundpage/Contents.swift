@@ -42,23 +42,14 @@ let jsonTask = performJSONRequest(jsonRequest) { (result : Result<User>) in
 
 //: Network Batch Request
 
-public func performBatchRequest(requests: [NSURLRequest], callback: ([String : NSData]) -> ()) {
-    let group = dispatch_group_create()
-    var results = [String : NSData]()
-    for request in requests {
-        dispatch_group_enter(group)
-        let task = NSURLSession.sharedSession().dataTaskWithRequest(request) { data, urlResponse, error in
-            results[request.URL!.absoluteString] = data
-            dispatch_group_leave(group)
-        }
-        task.resume()
-    }
-    dispatch_group_notify(group, dispatch_get_main_queue()) {
-        callback(results)
-    }
+let jsonRequest1 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/mkoehnke")!)
+let jsonRequest2 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/github")!)
+performBatchRequest([jsonRequest1, jsonRequest2]) { results in
+    let result1 : Result<User> = results[jsonRequest1]! >>> decodeJSON >>> decodeObject
+    let result2 : Result<User> = results[jsonRequest2]! >>> decodeJSON >>> decodeObject
 }
 
-// TODO - Example
+// TODO - Output
 
 //: Image Request
 
