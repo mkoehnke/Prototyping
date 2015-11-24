@@ -9,7 +9,7 @@ XCPlaygroundPage.currentPage.needsIndefiniteExecution = true
 
 //: Object Mapping
 
-struct User: JSONDecodable {
+struct User: JSONDecodable, CustomStringConvertible {
     let id: Int
     let name: String?
     let email: String?
@@ -26,30 +26,37 @@ struct User: JSONDecodable {
                 <*> d <|* "email"
         }
     }
+    
+    var description: String {
+        return name ?? ""
+    }
 }
 
 // TODO - Relationship Mapping
 
 //: Network Request
+let jsonRequest1 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/mkoehnke")!)
+let jsonRequest2 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/github")!)
 
-let jsonRequest = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/mkoehnke")!)
-let jsonTask = performJSONRequest(jsonRequest) { (result : Result<User>) in
+func handleResult<A : JSONDecodable>(result: Result<A>) {
     switch result {
-    case let .Value(user): user.name
-    case let .Error(error): error
+    case let .Value(value): print(value)
+    case let .Error(error): print(error)
     }
+}
+
+let jsonTask = performJSONRequest(jsonRequest1) { (result : Result<User>) in
+    handleResult(result)
 }
 
 //: Network Batch Request
 
-let jsonRequest1 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/mkoehnke")!)
-let jsonRequest2 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/github")!)
 performBatchRequest([jsonRequest1, jsonRequest2]) { results in
     let result1 : Result<User> = results[jsonRequest1]! >>> decodeJSON >>> decodeObject
     let result2 : Result<User> = results[jsonRequest2]! >>> decodeJSON >>> decodeObject
+    handleResult(result1)
+    handleResult(result2)
 }
-
-// TODO - Output
 
 //: Image Request
 
