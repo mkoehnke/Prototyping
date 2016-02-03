@@ -33,7 +33,6 @@ struct User: JSONDecodable, CustomStringConvertible {
 }
 
 // TODO - Relationship Mapping
-// TODO - Refactoring -> Use Promises for Async Execution
 // TODO - Futures/Promises
 //: Network Request
 let jsonRequest1 = NSURLRequest(URL: NSURL(string: "https://api.github.com/users/mkoehnke")!)
